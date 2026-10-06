@@ -316,10 +316,32 @@ input[type="time"].ctl{flex:none}
 
 /* Campos a 16px para que el iPhone no haga zoom al escribir */
 input.ctl,textarea.ctl,select.ctl{font-size:16px}
+/* Pantalla de inicio */
+#inicio{position:fixed;inset:0;z-index:50;background:var(--cielo);display:grid;place-items:center;padding:24px;transition:opacity .4s ease}
+#inicio.fuera{opacity:0;pointer-events:none}
+.ini{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.ini svg{width:132px;height:132px;margin-bottom:14px}
+.ini .logo-s{stroke-width:3.2}
+.ini-n{font-family:var(--f-display);font-weight:700;font-size:34px;line-height:1.1;letter-spacing:-.01em;color:var(--tinta)}
+.ini-l{font-family:var(--f-dato);font-size:13px;color:var(--bruma)}
+@media (prefers-reduced-motion: no-preference){
+  .ini .logo-p circle{opacity:0;animation:ini-p .28s ease-out forwards}
+  .ini .logo-s{transform-origin:32px 32px;animation:ini-s .5s ease-out both}
+  .ini-n,.ini-l{opacity:0;animation:ini-p .45s ease-out .55s forwards}
+}
+.ini .logo-p circle:nth-child(1){animation-delay:120ms}.ini .logo-p circle:nth-child(2){animation-delay:160ms}.ini .logo-p circle:nth-child(3){animation-delay:200ms}.ini .logo-p circle:nth-child(4){animation-delay:240ms}.ini .logo-p circle:nth-child(5){animation-delay:280ms}.ini .logo-p circle:nth-child(6){animation-delay:320ms}.ini .logo-p circle:nth-child(7){animation-delay:360ms}.ini .logo-p circle:nth-child(8){animation-delay:400ms}.ini .logo-p circle:nth-child(9){animation-delay:440ms}.ini .logo-p circle:nth-child(10){animation-delay:480ms}.ini .logo-p circle:nth-child(11){animation-delay:520ms}.ini .logo-p circle:nth-child(12){animation-delay:560ms}
+@keyframes ini-p{to{opacity:1}}
+@keyframes ini-s{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.pasos{list-style:decimal;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 </style>
 </head>
 <body>
+<div id="inicio" aria-hidden="true"><div class="ini">
+<svg viewBox="0 0 64 64"><g class="logo-p"><circle cx="32" cy="10" r="2.8"/><circle cx="43" cy="12.95" r="2.8"/><circle cx="51.05" cy="21" r="2.8"/><circle cx="54" cy="32" r="2.8"/><circle cx="51.05" cy="43" r="2.8"/><circle cx="43" cy="51.05" r="2.8"/><circle cx="32" cy="54" r="2.8"/><circle cx="21" cy="51.05" r="2.8"/><circle cx="12.95" cy="43" r="2.8"/><circle cx="10" cy="32" r="2.8"/><circle cx="12.95" cy="21" r="2.8"/><circle cx="21" cy="12.95" r="2.8"/></g><circle class="logo-s" cx="32" cy="32" r="11"/></svg>
+<p class="ini-n">Sunshine</p>
+<p class="ini-l">Sale todos los días.</p>
+</div></div>
 <div class="app"><main id="screen"></main></div>
 
 <nav class="tabs" aria-label="Secciones">
@@ -360,13 +382,27 @@ input.ctl,textarea.ctl,select.ctl{font-size:16px}
 <datalist id="libros-biblia"></datalist>
 
 <script>
-/* Almacén de Sunshine: los datos viven en este teléfono (IndexedDB) y los archivos salen por la hoja de compartir.
-   Expone window.sunshine.usar('db' | 'downloads') con la misma forma que la app ya usa. */
+/* Almacén de Sunshine: los datos viven en este teléfono y los archivos salen por la hoja de compartir.
+   Se guarda en dos lugares a la vez: IndexedDB y una copia espejo en localStorage. Si al abrir falta uno, se recupera del otro.
+   Expone window.sunshine.usar('db' | 'downloads') con la forma que usa la app. */
 (function(){
 'use strict';
-var MEM = {}, subsDoc = {}, subsCol = [], idb = null;
+var MEM = {}, subsDoc = {}, subsCol = [], idb = null, protegido = null, recuperado = false;
+var ESPEJO = 'sunshine.espejo.v1', espT = 0, espOk = true;
 function clon(o){ return JSON.parse(JSON.stringify(o)); }
+function vacio(o){ for (var k in o) return false; return true; }
 function unir(t, p){ for (var k in p){ var v = p[k]; if (v && typeof v === 'object' && !Array.isArray(v)){ if (!t[k] || typeof t[k] !== 'object' || Array.isArray(t[k])) t[k] = {}; unir(t[k], v); } else t[k] = v; } return t; }
+function falla(e){ e = e || {}; return { code:e.name === 'QuotaExceededError' ? 'quota_exceeded' : 'unavailable', message:String(e.message || e.name || 'error') }; }
+
+/* Copia espejo */
+function espejoAhora(){ clearTimeout(espT); espT = 0; try { localStorage.setItem(ESPEJO, JSON.stringify(MEM)); espOk = true; } catch(e){ espOk = false; } return espOk; }
+function espejar(){ if (!espT) espT = setTimeout(espejoAhora, 300); }
+function leerEspejo(){ try { var o = JSON.parse(localStorage.getItem(ESPEJO) || 'null'); return o && typeof o === 'object' && !Array.isArray(o) ? o : null; } catch(e){ return null; } }
+function alSalir(){ if (espT) espejoAhora(); }
+window.addEventListener('pagehide', alSalir);
+document.addEventListener('visibilitychange', function(){ if (document.hidden) alSalir(); });
+
+/* IndexedDB */
 function abrir(){
   return new Promise(function(ok, mal){
     var r; try { r = indexedDB.open('sunshine', 1); } catch(e){ return mal(e); }
@@ -374,24 +410,37 @@ function abrir(){
     r.onsuccess = function(){ ok(r.result); };
     r.onerror = function(){ mal(r.error); };
     r.onblocked = function(){ mal(new Error('blocked')); };
+    setTimeout(function(){ mal(new Error('timeout')); }, 4000);
   });
 }
-function cargar(){
+function leerTodo(){
   return new Promise(function(ok, mal){
-    var tx = idb.transaction('docs', 'readonly'), st = tx.objectStore('docs'), rk = st.getAllKeys(), rv = st.getAll();
-    tx.oncomplete = function(){ rk.result.forEach(function(k, i){ MEM[k] = rv.result[i]; }); ok(); };
+    var tx = idb.transaction('docs', 'readonly'), st = tx.objectStore('docs'), rk = st.getAllKeys(), rv = st.getAll(), m = {};
+    tx.oncomplete = function(){ rk.result.forEach(function(k, i){ m[k] = rv.result[i]; }); ok(m); };
     tx.onerror = tx.onabort = function(){ mal(tx.error); };
   });
 }
-function falla(e){ e = e || {}; return { code:e.name === 'QuotaExceededError' ? 'quota_exceeded' : 'unavailable', message:String(e.message || e.name || 'error') }; }
-function guardar(path, val){
+function tx_(){ try { return idb.transaction('docs', 'readwrite', { durability:'strict' }); } catch(e){ return idb.transaction('docs', 'readwrite'); } }
+function volcar(mapa){
   return new Promise(function(ok, mal){
-    var tx; try { tx = idb.transaction('docs', 'readwrite'); } catch(e){ return mal(falla(e)); }
-    tx.objectStore('docs').put(val, path);
+    var tx; try { tx = tx_(); } catch(e){ return mal(falla(e)); }
+    var st = tx.objectStore('docs'); st.clear();
+    Object.keys(mapa).forEach(function(k){ st.put(mapa[k], k); });
     tx.oncomplete = function(){ ok(); };
     tx.onerror = tx.onabort = function(){ mal(falla(tx.error)); };
   });
 }
+function guardar(path, val){
+  espejar();
+  if (!idb) return espejoAhora() ? Promise.resolve() : Promise.reject({ code:'quota_exceeded', message:'sin espacio' });
+  return new Promise(function(ok, mal){
+    var tx; try { tx = tx_(); } catch(e){ return espOk ? ok() : mal(falla(e)); }
+    tx.objectStore('docs').put(val, path);
+    tx.oncomplete = function(){ ok(); };
+    tx.onerror = tx.onabort = function(){ if (espejoAhora()) ok(); else mal(falla(tx.error)); };
+  });
+}
+
 function snap(path){ var v = MEM[path]; return { id:path.slice(path.lastIndexOf('/') + 1), exists:v !== undefined, data:function(){ return v === undefined ? undefined : clon(v); } }; }
 function cumple(v, w){
   var x = v == null ? undefined : v[w[0]], y = w[2];
@@ -437,15 +486,12 @@ function query(c, ws, n){
 }
 var db = { doc:docRef, collection:function(c){ return query(c, [], 0); } };
 
-/* Reemplazo completo, para cargar un respaldo */
+/* Reemplazo completo, para cargar un respaldo: queda escrito en los dos lugares antes de avisar */
 function reemplazar(mapa){
-  return new Promise(function(ok, mal){
-    var tx; try { tx = idb.transaction('docs', 'readwrite'); } catch(e){ return mal(falla(e)); }
-    var st = tx.objectStore('docs'); st.clear();
-    Object.keys(mapa).forEach(function(k){ st.put(mapa[k], k); });
-    tx.oncomplete = function(){ MEM = clon(mapa); ok(); };
-    tx.onerror = tx.onabort = function(){ mal(falla(tx.error)); };
-  });
+  MEM = clon(mapa);
+  var esp = espejoAhora();
+  if (!idb) return esp ? Promise.resolve() : Promise.reject({ code:'quota_exceeded' });
+  return volcar(MEM).catch(function(e){ if (esp) return; throw e; });
 }
 
 /* Archivos: hoja de compartir del teléfono si acepta archivos; si no, descarga normal */
@@ -470,8 +516,16 @@ var archivos = {
   }
 };
 
-var listo = abrir().then(function(d){ idb = d; return cargar(); }).then(function(){
-  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){}); } catch(e){}
+/* Arranque: abre IndexedDB, compara con el espejo y se queda con el que tenga datos */
+var listo = abrir().then(function(d){ idb = d; return leerTodo(); }).then(function(m){
+  var esp = leerEspejo();
+  if (!vacio(m)){ MEM = m; if (!esp || vacio(esp)) espejoAhora(); }
+  else if (esp && !vacio(esp)){ MEM = esp; recuperado = true; return volcar(MEM).catch(function(){}); }
+}, function(){
+  idb = null; var esp = leerEspejo(); if (esp) MEM = esp;
+  try { localStorage.setItem('sunshine.prueba', '1'); localStorage.removeItem('sunshine.prueba'); } catch(e){ return Promise.reject(e); }
+}).then(function(){
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().then(function(p){ protegido = !!p; }, function(){}); } catch(e){}
   return true;
 }, function(){ return false; });
 
@@ -481,7 +535,8 @@ window.sunshine = {
     if (n === 'downloads') return Promise.resolve(archivos);
     return Promise.resolve(null);
   },
-  reemplazar:function(mapa){ return listo.then(function(ok){ if (!ok) return Promise.reject({ code:'unavailable' }); return reemplazar(mapa); }); }
+  reemplazar:function(mapa){ return listo.then(function(ok){ if (!ok) return Promise.reject({ code:'unavailable' }); return reemplazar(mapa); }); },
+  estado:function(){ return { docs:Object.keys(MEM).length, idb:!!idb, espejo:espOk, protegido:protegido, recuperado:recuperado }; }
 };
 })();
 </script>
@@ -492,7 +547,8 @@ window.sunshine = {
 /* ---------- Constantes ---------- */
 var VENTANA = 69;
 var TABS = ['hoy','semana','estudio','cuerpo','metas','ajustes'];
-var VERSION = '1.0';
+var VERSION = '1.1';
+var ES_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent || '');
 var EN_APP = false; try { EN_APP = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches; } catch(e){}
 /* Bloque de la noche: [hábito, nombre en la app, nombre en el aviso] */
 var NOCHE = [['formacion','Formación','Estudios'],['lectura','Lectura','Lectura'],['biblia','Estudio bíblico','Lectura bíblica']];
@@ -905,7 +961,9 @@ function vMeditacion(f, bq){
 function marca(){ return '<div class="top">' + LOGO + '<span>Sunshine</span><button class="aj" data-act="tab" data-id="ajustes" aria-label="Ajustes"' + (S.tab === 'ajustes' ? ' aria-current="page"' : '') + '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button></div>'; }
 function avisos(){
   var h = '';
-  if (!EN_APP) h += '<div class="aviso"><span><b>Instálala primero.</b> En Safari toca Compartir y luego «Agregar a inicio». Carga tu respaldo dentro de la app instalada: lo que guardes aquí en el navegador no pasa a ella.</span></div>';
+  if (ES_IOS && !EN_APP && S.cfg) h += '<div class="aviso"><span><b>Estás en el navegador, no en la app instalada.</b> Lo que marques aquí se puede borrar al cerrar. Abre Sunshine desde su ícono en la pantalla de inicio.</span></div>';
+  var st0 = window.sunshine.estado();
+  if (st0.recuperado && !S.abre.recOk) h += '<div class="aviso"><span><b>Se recuperaron tus datos de la copia de seguridad interna.</b> Revisa que esté todo y guarda un respaldo.</span><button class="btn" data-act="abre" data-id="recOk">Entendido</button></div>';
   if (S.db === 'sin') h += '<div class="aviso"><span><b>Este navegador no deja guardar.</b> Ábrela desde el ícono de la pantalla de inicio y sin navegación privada.</span></div>';
   var rp = docGet('plan/respaldo') || {}, nd = Object.keys(S.days).length, hace = rp.descarga ? Math.round((parse(hoy()) - parse(rp.descarga)) / 86400000) : null;
   if (S.cfg && S.tab !== 'ajustes' && ((hace != null && hace >= 7) || (hace == null && nd >= 3))) h += '<div class="aviso"><span><b>' + (hace == null ? 'Todavía no guardas un respaldo.' : 'Tu último respaldo tiene ' + hace + ' días.') + '</b> Tus datos viven solo en este teléfono.</span><button class="btn" data-act="ir-respaldo">Respaldar</button></div>';
@@ -920,6 +978,10 @@ function avisos(){
 }
 function sinRutina(){
   if (S.db === 'cargando' || (S.db === 'ok' && !S.cfgLista)) return '<div class="vacio"><b>Cargando tu rutina…</b><p class="dim chico">Aquí aparecen tu día por hora, tus suplementos y tu seguimiento.</p></div>';
+  if (ES_IOS && !EN_APP && !S.abre.aquiIgual) return '<div class="vacio"><b>Primero instálala en tu iPhone</b>' +
+    '<ol class="pasos"><li>Si esto se abrió dentro de otra app, ábrelo en Safari: toca el ícono de la brújula o «Abrir en Safari».</li><li>En Safari toca Compartir: el cuadrado con la flecha hacia arriba.</li><li>Elige «Agregar a inicio» y confirma.</li><li>Cierra esta página y abre Sunshine desde el ícono nuevo. Ahí cargas tu respaldo, una sola vez.</li></ol>' +
+    '<p class="dim chico">Aquí en el navegador los datos se pueden borrar al cerrar. En la app instalada quedan guardados.</p>' +
+    '<div class="fila"><button class="btn" data-act="copiar-dir">Copiar dirección</button><button class="btn-txt" data-act="abre" data-id="aquiIgual">Usarla aquí de todos modos</button></div></div>';
   return '<div class="vacio"><b>Carga tu respaldo para empezar</b><p class="dim chico">Sunshine parte vacía en este teléfono. Elige el archivo sunshine-respaldo.json: trae tu rutina, tus planes, tus libros, tus cursos y tus hitos.</p>' + vCargar() + '</div>';
 }
 function bloqueado(){ return S.db === 'cargando' || (S.db === 'ok' && !S.daysLista); }
@@ -1420,6 +1482,10 @@ function cargarRespaldo(){
   p.cargando = true; render(true);
   window.sunshine.reemplazar(mapa).then(function(){ try { localStorage.setItem('sunshine.tab', 'hoy'); } catch(e){} location.reload(); }, function(){ S.imp = { err:'No se pudo cargar el respaldo en este teléfono.' }; render(true); });
 }
+function pie(){
+  var e = window.sunshine.estado();
+  return '<p class="chico dim">Sunshine ' + VERSION + ' · ' + (EN_APP ? 'app instalada' : 'navegador') + ' · ' + e.docs + ' documentos guardados · ' + (e.idb ? 'guardado doble' : 'guardado simple') + (e.protegido === true ? ' · protegido' : e.protegido === false ? ' · sin protección' : '') + '</p>';
+}
 function vRespaldo(){
   var r = docGet('plan/respaldo') || {}, hace = r.descarga ? Math.round((parse(hoy()) - parse(r.descarga)) / 86400000) : null;
   var h = '<section class="nota"><p><b>Tus datos viven en este teléfono.</b></p><p class="chico">El respaldo es un archivo. Guárdalo en Archivos y súbelo a tu Proton Drive, en Proyecto Sunshine, 02 Respaldos. Si pierdes o cambias el teléfono, es lo único que te devuelve tu registro.</p></section>';
@@ -1427,7 +1493,7 @@ function vRespaldo(){
     '<div class="fila"><button class="btn btn-sol" data-act="respaldo-dl">Guardar respaldo</button><button class="btn" data-act="registro-dl">Exportar registro para Excel</button></div>' +
     '<p class="chico dim">El respaldo trae todo y sirve para restaurar. El registro para Excel es una tabla con un día por fila.</p></section>';
   h += '<section class="sec"><div class="sec-h"><h2>Cargar un respaldo</h2></div>' + vCargar() + '<p class="chico dim">Cargar un respaldo reemplaza todo lo que hay en este teléfono.</p></section>';
-  return h + '<p class="chico dim">Sunshine ' + VERSION + '</p>';
+  return h + pie();
 }
 function descargarAlarmas(){
   var r = icsAlarmas(); if (!r.n){ toast('No hay avisos que exportar.'); return; }
@@ -1458,7 +1524,7 @@ function vAlarmas(){
 }
 function vAjustes(){
   var h = marca() + '<header class="cab1"><p class="eyebrow">Configuración</p><h1>Ajustes</h1></header>' + avisos();
-  if (!S.cfg) return h + sinRutina() + '<p class="chico dim">Sunshine ' + VERSION + '</p>';
+  if (!S.cfg) return h + sinRutina() + pie();
   h += '<div class="seg" role="group" aria-label="Sección">' + [['suplementos','Suplementos'],['alarmas','Alarmas'],['respaldo','Respaldo']].map(function(x){ return '<button data-act="seg-aj" data-id="' + x[0] + '" aria-pressed="' + (x[0] === S.ajuste) + '">' + x[1] + '</button>'; }).join('') + '</div>';
   return h + (S.ajuste === 'alarmas' ? vAlarmas() : S.ajuste === 'respaldo' ? vRespaldo() : vSuplementos());
 }
@@ -1631,6 +1697,11 @@ document.addEventListener('click', function(ev){
   if (act === 'imp-ok') return cargarRespaldo();
   if (act === 'imp-no'){ S.imp = null; return render(true); }
   if (act === 'ir-respaldo'){ S.ajuste = 'respaldo'; return irA('ajustes'); }
+  if (act === 'copiar-dir'){
+    var dir = location.href.split('#')[0].split('?')[0];
+    try { navigator.clipboard.writeText(dir).then(function(){ toast('Dirección copiada. Pégala en Safari.'); }, function(){ toast(dir); }); } catch(e){ toast(dir); }
+    return;
+  }
   if (act === 'dejar'){ docSet('libros/' + id, { activo:false }); return toast('Libro en pausa. Tu avance y tus notas se conservan.', function(){ docSet('libros/' + id, { activo:true }); }); }
   if (act === 'lib-fin'){ docSet('libros/' + id, { estado:'terminado', terminadoEl:hoy() }); return toast('Libro terminado. Cuenta para tu meta del año.', function(){ docSet('libros/' + id, { estado:'leyendo', terminadoEl:'' }); }); }
   if (act === 'lib-retomar'){ docSet('libros/' + id, { estado:'leyendo', terminadoEl:'', activo:true }); return; }
@@ -1767,7 +1838,13 @@ document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('
 /* ---------- Arranque ---------- */
 function usar(n){ try { return window.sunshine.usar(n).catch(function(){ return null; }); } catch(e){ return Promise.resolve(null); } }
 render(true);
-usar('db').then(function(db){ DB = db; if (!db){ S.db = 'sin'; S.cfgLista = true; render(); return; } S.db = 'ok'; suscribir(); render(); });
+function quitarInicio(){
+  var el = $('#inicio'); if (!el || el.dataset.y) return; el.dataset.y = '1';
+  var ya = 0; try { ya = performance.now(); } catch(e){}
+  setTimeout(function(){ el.classList.add('fuera'); setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 500); }, Math.max(0, 1700 - ya));
+}
+setTimeout(quitarInicio, 5000);
+usar('db').then(function(db){ DB = db; if (!db){ S.db = 'sin'; S.cfgLista = true; render(); quitarInicio(); return; } S.db = 'ok'; suscribir(); render(); quitarInicio(); });
 usar('downloads').then(function(x){ DL = x; dlListo = true; if (S.tab === 'ajustes') render(); });
 })();
 </script>
