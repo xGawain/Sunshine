@@ -577,7 +577,7 @@ window.sunshine = {
 /* ---------- Constantes ---------- */
 var VENTANA = 69;
 var TABS = ['hoy','semana','estudio','cuerpo','metas','ajustes'];
-var VERSION = '1.2';
+var VERSION = '1.3';
 var ES_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent || '');
 var EN_APP = false; try { EN_APP = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches; } catch(e){}
 /* Bloque de la noche: [hábito, nombre en la app, nombre en el aviso] */
@@ -827,12 +827,18 @@ function gruposDe(foco){ return foco === 'empuje' ? 'ec' : foco === 'traccion' ?
 function todosEj(){ var m = {}, ej = planE().ejercicios || {}, k; for (k in ej) (ej[k] || []).forEach(function(e){ m[e.id] = e; }); return m; }
 /* Series de un ejercicio en un día: [{kg, reps}] */
 function serHoy(f, eid){ var d = dia(f), x = d.entreno && d.entreno.ej && d.entreno.ej[eid]; return x && Array.isArray(x.series) ? x.series : (x && (x.kg || x.reps) ? [{ kg:x.kg || '', reps:x.reps || '' }] : []); }
-function conDatos(ss){ return (ss || []).filter(function(s){ return s && (s.kg || s.reps); }); }
+function conDatos(ss){ return (ss || []).filter(function(s){ return s && s.reps; }); }
 function nFilas(f, e){ var s = serHoy(f, e.id); if (s.length) return s.length; var n = parseInt(e.series, 10); return n >= 1 && n <= 10 ? n : 3; }
 function coma(v){ return String(v == null ? '' : v).replace('.', ','); }
 function fmtSeries(ss){ return conDatos(ss).map(function(s){ return coma(s.kg || '0') + '×' + (s.reps || '?'); }).join(' · '); }
 function volumen(ss){ var v = 0; conDatos(ss).forEach(function(s){ v += numf(s.kg) * numf(s.reps); }); return Math.round(v); }
-function seriesArr(f, eid, n){ var cur = serHoy(f, eid), a = [], i; for (i = 0; i < n; i++) a.push({ kg:(cur[i] && cur[i].kg) || '', reps:(cur[i] && cur[i].reps) || '' }); return a; }
+function kgBase(f, e, i){ var u = ultimaVez(e.id, f), x = u ? (u.series[i] || u.series[u.series.length - 1]) : null; return (x && x.kg) || e.kg || ''; }
+function seriesArr(f, eid, n){
+  var cur = serHoy(f, eid), e = todosEj()[eid] || { id:eid }, a = [], i;
+  for (i = 0; i < n; i++) a.push({ kg:cur[i] ? (cur[i].kg || '') : kgBase(f, e, i), reps:(cur[i] && cur[i].reps) || '' });
+  return a;
+}
+function planTxt(e){ return [(e.series || '') + (e.series && e.reps ? '×' : '') + (e.reps || ''), e.kg ? coma(e.kg) + ' kg' : '', EQ[e.eq] ? EQ[e.eq].toLowerCase() : ''].filter(Boolean).join(' · '); }
 function ponerSeries(f, eid, arr, silencioso){ var p = { entreno:{ foco:focoDe(f), ej:{} } }; p.entreno.ej[eid] = { series:arr }; mutate(f, p, silencioso); }
 function hayEntreno(f){ var d = dia(f), ej = (d.entreno && d.entreno.ej) || {}, k; if (d.habitos && d.habitos.entreno) return true; for (k in ej) if (conDatos(ej[k] && ej[k].series).length) return true; return false; }
 function ultimaVez(eid, antes){
@@ -852,7 +858,8 @@ function vFormEj(foco, bq){
   return h + '</select></div>' +
     '<div class="fila"><input class="ctl w" id="ej-n" data-d="ej-n" placeholder="O escribe otro ejercicio" aria-label="Nombre de otro ejercicio" value="' + esc(dv('ej-n')) + '"' + bq + '></div>' +
     '<div class="fila"><label for="ej-s">Series</label><input class="ctl n" id="ej-s" data-d="ej-s" inputmode="numeric" placeholder="3" value="' + esc(dv('ej-s')) + '"' + bq + '>' +
-    '<label for="ej-r">Reps</label><input class="ctl n" id="ej-r" data-d="ej-r" placeholder="8-10" value="' + esc(dv('ej-r')) + '"' + bq + '>' +
+    '<label for="ej-r">Reps</label><input class="ctl n" id="ej-r" data-d="ej-r" placeholder="8-10" value="' + esc(dv('ej-r')) + '"' + bq + '></div>' +
+    '<div class="fila"><label for="ej-k">Peso de trabajo</label><input class="ctl n" id="ej-k" data-d="ej-k" inputmode="decimal" placeholder="kg" value="' + esc(dv('ej-k')) + '"' + bq + '><span class="chico dim">kg</span>' +
     '<button class="btn btn-sol" data-act="ej-add" data-id="' + esc(foco) + '"' + bq + '>Agregar</button><button class="btn-txt" data-act="abre" data-id="ejForm">Cerrar</button></div>';
 }
 function vEntreno(f, bq){
@@ -866,14 +873,14 @@ function vEntreno(f, bq){
   if (!ejs.length) h += '<p class="chico dim">Todavía no hay ejercicios para ' + esc(focoNombre(foco) || 'este foco') + '. Agrega los tuyos desde la lista de ejercicios típicos y quedarán guardados para la próxima vez.</p>';
   ejs.forEach(function(e){
     var ss = serHoy(f, e.id), n = nFilas(f, e), u = ultimaVez(e.id, f), id = esc(e.id), i;
-    var plan = [(e.series || '') + (e.series && e.reps ? '×' : '') + (e.reps || ''), EQ[e.eq] ? EQ[e.eq].toLowerCase() : ''].filter(Boolean).join(' · ');
+    var plan = planTxt(e);
     volT += volumen(ss);
     h += '<div class="ej"><b>' + esc(e.nombre) + (plan ? ' <span class="mono dim chico">' + esc(plan) + '</span>' : '') + '</b>' +
       '<small>' + (u ? 'Última vez (' + corta(u.f) + '): ' + esc(fmtSeries(u.series)) : 'Sin registro anterior.') + '</small><div class="series">';
     for (i = 0; i < n; i++){
-      var s = ss[i] || {}, pu = u ? (u.series[i] || u.series[u.series.length - 1]) : {};
+      var s = ss[i] || { kg:kgBase(f, e, i) }, pu = u ? (u.series[i] || u.series[u.series.length - 1]) : {};
       h += '<div class="serie"><span class="i">' + (i + 1) + '</span><input class="ctl n" id="ej-' + id + '-' + i + '-kg" data-ej="' + id + '" data-i="' + i + '" data-k="kg" inputmode="decimal" placeholder="' + esc(coma(pu.kg) || 'kg') + '" aria-label="Serie ' + (i + 1) + ' de ' + esc(e.nombre) + ', kilos" value="' + esc(coma(s.kg)) + '"' + bq + '><span>kg ×</span>' +
-        '<input class="ctl n" id="ej-' + id + '-' + i + '-reps" data-ej="' + id + '" data-i="' + i + '" data-k="reps" inputmode="numeric" placeholder="' + esc(pu.reps || 'reps') + '" aria-label="Serie ' + (i + 1) + ' de ' + esc(e.nombre) + ', repeticiones" value="' + esc(s.reps) + '"' + bq + '><span>reps</span></div>';
+        '<input class="ctl n" id="ej-' + id + '-' + i + '-reps" data-ej="' + id + '" data-i="' + i + '" data-k="reps" inputmode="numeric" placeholder="' + esc(pu.reps || String(e.reps || '').split('-')[0] || 'reps') + '" aria-label="Serie ' + (i + 1) + ' de ' + esc(e.nombre) + ', repeticiones" value="' + esc(s.reps) + '"' + bq + '><span>reps</span></div>';
     }
     h += '</div><div class="fila"><button class="btn" data-act="serie" data-id="' + id + '" data-v="1"' + bq + '>+ Serie</button>' +
       (n > 1 ? '<button class="btn-txt" data-act="serie" data-id="' + id + '" data-v="-1"' + bq + '>Quitar la última</button>' : '') +
@@ -1741,8 +1748,12 @@ function vCuerpo(){
   }).join('') + '</ul></section>';
   var fs = S.focoSel || focoDe(t) || p.focos[0].id, ejs = ejerciciosDe(fs);
   h += '<section class="sec"><div class="sec-h"><h2>Ejercicios por foco</h2><span class="conteo mono">' + ejs.length + '</span></div><div class="seg" role="group" aria-label="Foco">' + p.focos.map(function(x){ return '<button data-act="foco-sel" data-id="' + esc(x.id) + '" aria-pressed="' + (x.id === fs) + '">' + esc(x.nombre) + '</button>'; }).join('') + '</div>';
-  if (ejs.length) h += '<ul class="lista">' + ejs.map(function(e){ var u = ultimaVez(e.id, '9999'), mk = mejorKg(e.id); return '<li class="libro"><span class="item-t"><b>' + esc(e.nombre) + '</b><small>' + esc([(e.series||'') + (e.series && e.reps ? '×' : '') + (e.reps||''), EQ[e.eq] ? EQ[e.eq].toLowerCase() : '', u ? 'última vez ' + fmtSeries(u.series) + ' (' + corta(u.f) + ')' : '', mk ? 'mejor ' + kgT(mk) + ' kg' : ''].filter(Boolean).join(' · ') || 'Sin series definidas') + '</small></span><button class="btn-txt" data-act="ej-del" data-id="' + esc(e.id) + '" data-v="' + esc(fs) + '" aria-label="Quitar ' + esc(e.nombre) + '">Quitar</button></li>'; }).join('') + '</ul>';
-  else h += '<div class="vacio"><b>Sin ejercicios en ' + esc(focoNombre(fs)) + '</b><p class="dim chico">Elige los ejercicios de este foco en la lista de típicos, con peso libre o máquina. Aparecerán el día que toque, con una fila por serie.</p></div>';
+  if (ejs.length) h += '<ul class="lista">' + ejs.map(function(e){ var u = ultimaVez(e.id, '9999'), mk = mejorKg(e.id), ed = S.abre['ee-' + e.id], id = esc(e.id);
+    if (ed) return '<li class="item"><b>' + esc(e.nombre) + '</b><div class="fila"><label for="ee-s-' + id + '">Series</label><input class="ctl n" id="ee-s-' + id + '" data-ch="ej-edit" data-id="' + id + '" data-f="' + esc(fs) + '" data-k="series" inputmode="numeric" value="' + esc(e.series || '') + '">' +
+      '<label for="ee-r-' + id + '">Reps</label><input class="ctl n" id="ee-r-' + id + '" data-ch="ej-edit" data-id="' + id + '" data-f="' + esc(fs) + '" data-k="reps" value="' + esc(e.reps || '') + '"></div>' +
+      '<div class="fila"><label for="ee-k-' + id + '">Peso de trabajo</label><input class="ctl n" id="ee-k-' + id + '" data-ch="ej-edit" data-id="' + id + '" data-f="' + esc(fs) + '" data-k="kg" inputmode="decimal" value="' + esc(coma(e.kg)) + '"><span class="chico dim">kg</span><button class="btn-txt" data-act="abre" data-id="ee-' + id + '">Listo</button></div></li>';
+    return '<li class="libro"><span class="item-t"><b>' + esc(e.nombre) + '</b><small>' + esc([planTxt(e), u ? 'última vez ' + fmtSeries(u.series) + ' (' + corta(u.f) + ')' : '', mk ? 'mejor ' + kgT(mk) + ' kg' : ''].filter(Boolean).join(' · ') || 'Sin series definidas') + '</small></span><span class="fila" style="flex:none;gap:4px"><button class="btn-txt" data-act="abre" data-id="ee-' + id + '" aria-label="Editar ' + esc(e.nombre) + '">Editar</button><button class="btn-txt" data-act="ej-del" data-id="' + esc(e.id) + '" data-v="' + esc(fs) + '" aria-label="Quitar ' + esc(e.nombre) + '">Quitar</button></span></li>'; }).join('') + '</ul>';
+  else h += '<div class="vacio"><b>Sin ejercicios en ' + esc(focoNombre(fs)) + '</b><p class="dim chico">Elige los ejercicios de este foco en la lista de típicos, con su peso de trabajo. Aparecerán el día que toque, con una fila por serie y el peso ya puesto.</p></div>';
   h += vFormEj(fs, '') + '</section>';
 
   var ses = [];
@@ -1869,7 +1880,7 @@ document.addEventListener('click', function(ev){
   if (act === 'ej-add'){
     var nom = String(dv('ej-n')).trim() || String(dv('ej-c')).trim(); if (!nom){ toast('Elige un ejercicio de la lista o escribe su nombre.'); return; }
     var enCat = CAT.filter(function(x){ return x[0] === nom; })[0];
-    o = { ejercicios:{} }; o.ejercicios[id] = ejerciciosDe(id).concat([{ id:'e' + Date.now().toString(36), nombre:nom, series:String(dv('ej-s')).trim() || '3', reps:String(dv('ej-r')).trim(), eq:enCat ? enCat[2] : '' }]);
+    o = { ejercicios:{} }; o.ejercicios[id] = ejerciciosDe(id).concat([{ id:'e' + Date.now().toString(36), nombre:nom, series:String(dv('ej-s')).trim() || '3', reps:String(dv('ej-r')).trim(), kg:String(dv('ej-k')).trim().replace(',', '.'), eq:enCat ? enCat[2] : '' }]);
     limpiar('ej-'); docSet('plan/entreno', o, true); render(true); return toast('Agregado: ' + nom + ' en ' + focoNombre(id) + '.');
   }
   if (act === 'serie'){
@@ -2020,6 +2031,12 @@ document.addEventListener('change', function(ev){
   else if (c === 'rec-hora'){ var rs = clone(S.cfg.recordatorios || []); rs.forEach(function(x){ if (x.id === el.dataset.id) x.hora = el.value || ''; }); docSet('config/rutina', { recordatorios:rs }, true); render(); }
   else if (c === 'hito-txt'){ var hv = el.value.trim(); if (hv) docSet('hitos/' + el.dataset.id, { objetivo:hv }, true); render(); }
   else if (c === 'hito-area'){ docSet('hitos/' + el.dataset.id, { area:el.value }, true); el.blur(); render(true); }
+  else if (c === 'ej-edit'){
+    var fE = el.dataset.f, lE = clone(ejerciciosDe(fE)), kE = el.dataset.k, vE = el.value.trim();
+    if (kE === 'kg') vE = vE.replace(',', '.');
+    lE.forEach(function(x){ if (x.id === el.dataset.id) x[kE === 'kg' ? 'kg' : kE === 'reps' ? 'reps' : 'series'] = vE; });
+    o = { ejercicios:{} }; o.ejercicios[fE] = lE; docSet('plan/entreno', o, true); render(true);
+  }
   else if (c === 'ventana'){ o = {}; o[el.dataset.k === 'cierra' ? 'cierra' : 'abre'] = el.value || ''; ponerVentana(S.date, o); }
   else if (c === 'alarma'){ o = {}; o[el.dataset.id] = {}; o[el.dataset.id][el.dataset.k === 'hasta' ? 'hasta' : 'hora'] = el.value || ''; docSet('plan/alarmas', o, true); render(); }
 });
