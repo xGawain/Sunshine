@@ -338,6 +338,15 @@ input.ctl,textarea.ctl,select.ctl{font-size:16px}
 .ley{display:flex;gap:16px;font-size:12px;color:var(--tinta-2);align-items:center;padding:4px 6px 2px}
 .ley i{display:inline-block;width:18px;height:0;border-top:2px solid var(--noche);margin-right:6px;vertical-align:middle}
 .ley i.pl{border-top:1.5px dashed var(--borde)}
+/* Hoy compacto */
+.barras{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.barra{display:flex;flex-direction:column;gap:5px;min-width:0}
+.barra .medidor{height:8px}
+.act-t{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:transparent;border:0;padding:4px 0;text-align:left;color:inherit;font:inherit;min-height:44px}
+.act-f{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea)}
+.act-f .det{border-top:0;padding:4px 0 12px}
+.act-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
+.act-r b{min-width:96px;font-weight:600}
 /* Pantalla de inicio */
 #inicio{position:fixed;inset:0;z-index:50;background:var(--cielo);display:grid;place-items:center;padding:24px;transition:opacity .4s ease}
 #inicio.fuera{opacity:0;pointer-events:none}
@@ -370,7 +379,7 @@ input.ctl,textarea.ctl,select.ctl{font-size:16px}
   <div class="tabs-in" id="tabs">
     <button class="tab" data-act="tab" data-id="hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17a7 7 0 0 1 14 0z"/><path d="M12 6V4M5.6 9.6 4.2 8.2M18.4 9.6l1.4-1.4M2 17h20M7 21h10" fill="none"/></svg>Hoy</button>
     <button class="tab" data-act="tab" data-id="semana"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="4" height="9" rx="1"/><rect x="10" y="5" width="4" height="15" rx="1"/><rect x="16" y="13" width="4" height="7" rx="1"/></svg>Semana</button>
-    <button class="tab" data-act="tab" data-id="estudio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M9 8h6" fill="none"/></svg>Estudio</button>
+    <button class="tab" data-act="tab" data-id="estudio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M9 8h6" fill="none"/></svg>Mente</button>
     <button class="tab" data-act="tab" data-id="cuerpo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="9" width="4" height="6" rx="1"/><rect x="18" y="9" width="4" height="6" rx="1"/><path d="M6 12h12" fill="none"/></svg>Cuerpo</button>
     <button class="tab" data-act="tab" data-id="metas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l-2 4 2 4H5z"/><path d="M5 21V4" fill="none"/></svg>Metas</button>
   </div>
@@ -577,7 +586,7 @@ window.sunshine = {
 /* ---------- Constantes ---------- */
 var VENTANA = 69;
 var TABS = ['hoy','semana','estudio','cuerpo','metas','ajustes'];
-var VERSION = '1.4';
+var VERSION = '2.0';
 var ES_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent || '');
 var EN_APP = false; try { EN_APP = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches; } catch(e){}
 /* Bloque de la noche: [hábito, nombre en la app, nombre en el aviso] */
@@ -634,18 +643,19 @@ function ent(v){ var n = Math.round(+String(v).replace(',', '.')); return isFini
 var S = {
   tab:'hoy', date:hoy(), sigueHoy:true, semana:lunesDe(hoy()), selSem:null,
   db:'cargando', cfg:null, cfgLista:false, days:{}, local:{}, daysLista:false, guardar:null,
-  tri:'T' + (Math.floor(new Date().getMonth()/3)+1), estudio:'lectura', ajuste:'suplementos', supTipo:null, focoSel:null, abre:{}, draft:{},
+  tri:'T' + (Math.floor(new Date().getMonth()/3)+1), estudio:'lectura', cuerpo:'entreno', ajuste:'plan', supTipo:null, focoSel:null, abre:{}, draft:{},
   q:'', col:{}, imp:null, pesoSel:null, qc:'', comSel:null
 };
 var DB = null, DL = null, dlListo = false;
 var Q = {};       /* cola de escritura por día */
 var DOC = {};     /* documentos sueltos: planes, libros, estado de metas */
 
-try { var t0 = localStorage.getItem('sunshine.tab'); if (t0) S.tab = t0; var e0 = localStorage.getItem('sunshine.estudio'); if (e0) S.estudio = e0; } catch(e){}
+try { var t0 = localStorage.getItem('sunshine.tab'); if (t0) S.tab = t0; var e0 = localStorage.getItem('sunshine.estudio'); if (e0) S.estudio = e0; var c0 = localStorage.getItem('sunshine.cuerpo'); if (c0) S.cuerpo = c0; } catch(e){}
 var hash = (location.hash||'').replace('#','');
 if (TABS.indexOf(hash) >= 0) S.tab = hash;
 if (TABS.indexOf(S.tab) < 0) S.tab = 'hoy';
-if (['lectura','biblia','cursos'].indexOf(S.estudio) < 0) S.estudio = 'lectura';
+if (['lectura','biblia','cursos','meditacion'].indexOf(S.estudio) < 0) S.estudio = 'lectura';
+if (['peso','comida','entreno'].indexOf(S.cuerpo) < 0) S.cuerpo = 'entreno';
 $('#libros-biblia').innerHTML = BIB.map(function(b){ return '<option value="' + esc(b[0]) + '">'; }).join('');
 
 function dv(k, def){ return (k in S.draft) ? S.draft[k] : (def == null ? '' : def); }
@@ -710,6 +720,7 @@ function autoHabitos(f, pasos){
   var todos = function(a){ return a.every(Boolean); };
   if (g.sup.length) o.suplementos = todos(g.sup);
   if (g.comida.length) o.dieta = todos(g.comida);
+  var dcm = dietaComida(dia(f).comidas); if (dcm != null) o.dieta = dcm;
   if (g.entreno.length) o.entreno = todos(g.entreno);
   return o;
 }
@@ -1001,7 +1012,7 @@ function registrarLectura(id){
   if (l.unidad !== 'minutos') docSet('libros/' + id, { actual:hasta }, true);
   limpiar(k); render(true);
   var fin = l.total && l.unidad !== 'minutos' && hasta >= l.total;
-  toast(fin ? 'Llegaste al final de ' + l.nombre + '. Márcalo como terminado en Estudio, en los ajustes del libro.' : 'Guardado: ' + (l.unidad === 'minutos' ? min + ' min' : u[2] + ' ' + desde + ' → ' + hasta) + ' de ' + l.nombre + '.', function(){ mutate(f, antes, true); if (l.unidad !== 'minutos') docSet('libros/' + id, { actual:desde }, true); render(true); });
+  toast(fin ? 'Llegaste al final de ' + l.nombre + '. Márcalo como terminado en Mente, en los ajustes del libro.' : 'Guardado: ' + (l.unidad === 'minutos' ? min + ' min' : u[2] + ' ' + desde + ' → ' + hasta) + ' de ' + l.nombre + '.', function(){ mutate(f, antes, true); if (l.unidad !== 'minutos') docSet('libros/' + id, { actual:desde }, true); render(true); });
 }
 
 /* ---------- Estudio bíblico ---------- */
@@ -1165,7 +1176,7 @@ function vVentana(f, d, bq){
 /* Proteína del día: se cuenta en porciones contra la meta en gramos */
 /* ---------- Comida y calorías ---------- */
 var COMIDAS = [['des','Desayuno'],['alm','Almuerzo'],['cena','Once o cena'],['col','Colación']];
-var ACTIV = [[1.2,'Poco movimiento'],[1.375,'Ligera: caminatas cortas o 1 a 3 entrenos por semana'],[1.55,'Activa: entreno casi diario o caminatas largas'],[1.725,'Muy activa: doble jornada de ejercicio']];
+var ACTIV = [[1.2,'Poco movimiento'],[1.375,'Ligera (1 a 3 entrenos)'],[1.55,'Activa (entreno casi diario)'],[1.725,'Muy activa (doble jornada)']];
 function n0(v){ return Math.round(+v || 0).toLocaleString('es-CL'); }
 function comidaPorHora(){ var h = new Date().getHours(); return h < 11 ? 'des' : h < 16 ? 'alm' : 'cena'; }
 function misComidas(){ return ((docGet('plan/comidas') || {}).lista || []).filter(function(x){ return x && x.n; }); }
@@ -1216,14 +1227,14 @@ function medidor(et, v, meta, u){
   return '<div class="campo" style="gap:4px"><div class="sec-h"><span class="chico" style="font-weight:600">' + et + '</span><span class="chico mono">' + n0(v) + ' de ' + n0(meta) + ' ' + u + (dif > 0 && u === 'kcal' ? ' · ' + n0(dif) + ' sobre la meta' : '') + (dif >= 0 && u === 'g' ? ' · ✓' : '') + '</span></div>' +
     '<div class="medidor" role="img" aria-label="' + et + ': ' + n0(v) + ' de ' + n0(meta) + ' ' + u + '"><i style="width:' + pct + '%"></i></div></div>';
 }
-function vMetaKcal(pc){
+function vMetaKcal(pc, enAj){
   var c = calcMeta(pc), h = '<div class="campo">';
   h += '<div class="fila"><label for="mk-h">Estatura</label><input class="ctl n" id="mk-h" data-d="mk-h" inputmode="numeric" placeholder="cm" value="' + esc(dv('mk-h', pc.estatura || '')) + '"><span class="chico dim">cm</span>' +
     '<label for="mk-a">Edad</label><input class="ctl n" id="mk-a" data-d="mk-a" inputmode="numeric" value="' + esc(dv('mk-a', pc.edad || '')) + '"></div>' +
     '<div class="fila"><label for="mk-s">Sexo</label><select class="ctl" id="mk-s" data-d="mk-s"><option value="h"' + (dv('mk-s', pc.sexo || 'h') === 'h' ? ' selected' : '') + '>Hombre</option><option value="m"' + (dv('mk-s', pc.sexo || 'h') === 'm' ? ' selected' : '') + '>Mujer</option></select></div>' +
     '<div class="campo" style="gap:4px"><label for="mk-x" class="chico" style="font-weight:600">Actividad</label><select class="ctl" id="mk-x" data-d="mk-x">' + ACTIV.map(function(x){ return '<option value="' + x[0] + '"' + (+dv('mk-x', pc.act || 1.55) === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></div>' +
     '<div class="fila"><label for="mk-m">Meta propia</label><input class="ctl n" id="mk-m" data-d="mk-m" inputmode="numeric" placeholder="auto" value="' + esc(dv('mk-m', pc.kcalManual || '')) + '"><span class="chico dim">kcal, si tu médico te dio una</span></div>' +
-    '<div class="fila"><button class="btn btn-sol" data-act="meta-k">Guardar meta</button>' + (metaKcal() ? '<button class="btn-txt" data-act="abre" data-id="metaK">Cerrar</button>' : '') + '</div>';
+    '<div class="fila"><button class="btn btn-sol" data-act="meta-k">Guardar meta</button>' + (!enAj && metaKcal() ? '<button class="btn-txt" data-act="abre" data-id="metaK">Cerrar</button>' : '') + '</div>';
   if (c) h += '<p class="chico" style="color:var(--tinta-2)">Con ' + kgT(pesoActual()) + ' kg tu gasto estimado es <b>' + n0(c.gasto) + ' kcal</b> al día. Restando ' + n0(c.def) + ' kcal queda una meta de <b>' + n0(c.meta) + ' kcal</b>' + (+pc.kcalManual > 0 ? ' (estás usando tu meta propia de ' + n0(pc.kcalManual) + ')' : '') + '. Se recalcula sola con cada pesaje.</p>';
   return h + '</div>';
 }
@@ -1249,45 +1260,55 @@ function vAgregarComida(){
   if (S.abre.comAdm) h += '<ul class="lista">' + misComidas().map(function(x){ return '<li class="libro"><span class="item-t"><b>' + esc(x.n) + '</b><small>' + n0(x.kcal) + ' kcal · ' + n0(x.p) + ' g proteína por ' + esc(x.med || 'porción') + '</small></span><button class="btn-txt" data-act="com-mdel" data-id="' + esc(x.id) + '">Quitar</button></li>'; }).join('') + '</ul>';
   return h + '</div>';
 }
+function barra(u, v, meta, et){
+  if (!meta) return '<div class="barra"><span class="chico"><b class="mono">' + n0(v) + '</b> ' + u + '</span></div>';
+  var pct = Math.min(100, 100 * v / meta), sobre = v > meta;
+  return '<div class="barra"><span class="chico"><b class="mono">' + n0(v) + '</b> de ' + n0(meta) + ' ' + u + (sobre && u === 'kcal' ? ' <span style="color:var(--brasa)">+' + n0(v - meta) + '</span>' : '') + (!sobre || u === 'kcal' ? '' : ' ✓') + '</span>' +
+    '<div class="medidor" role="img" aria-label="' + et + ': ' + n0(v) + ' de ' + n0(meta) + ' ' + u + '"><i style="width:' + pct + '%"></i></div></div>';
+}
+function dietaComida(cs){ if (!cs || !cs.length) return null; var mk = metaKcal(), tk = 0; cs.forEach(function(x){ tk += +x.kcal || 0; }); return mk ? tk <= mk * 1.05 : true; }
 function vComida(f, d, bq){
-  var pc = planC(), mk = metaKcal(), mp = +pc.proteina || 0, t = totDia(d), cs = d.comidas || [];
-  var h = '<section class="prot"><div class="sec-h"><h2 style="font-size:16px">Comida</h2><span class="conteo mono">' + n0(t.kcal) + ' kcal · ' + n0(t.p) + ' g proteína</span></div>';
-  if (mk) h += medidor('Calorías', t.kcal, mk, 'kcal');
-  if (mp) h += medidor('Proteína', t.p, mp, 'g');
-  if (!mk && !S.abre.metaK) h += '<div class="aviso"><span><b>Falta tu meta de calorías.</b> Con tu estatura y edad la calculo.</span><button class="btn" data-act="abre" data-id="metaK">Calcular</button></div>';
-  if (S.abre.metaK) h += vMetaKcal(pc);
-  COMIDAS.forEach(function(m){
-    var its = cs.filter(function(x){ return (x.m || 'col') === m[0]; }); if (!its.length) return;
-    var sk = 0; its.forEach(function(x){ sk += +x.kcal || 0; });
-    h += '<div class="campo" style="gap:4px"><div class="sec-h"><span class="grupo-t">' + m[1] + '</span><span class="chico mono dim">' + n0(sk) + ' kcal</span></div><ul class="reg">' + its.map(function(x){
-      return '<li><span>' + esc(x.n) + ' <span class="dim">' + esc(x.q || '') + '</span></span><span class="mono" style="white-space:nowrap">' + n0(x.kcal) + ' · ' + n0(x.p) + ' g <button class="btn-txt" data-act="com-del" data-id="' + esc(x.id) + '" aria-label="Quitar ' + esc(x.n) + '" style="min-height:0;padding:0 0 0 6px">×</button></span></li>'; }).join('') + '</ul>' +
-      (its.length > 1 ? (S.abre['gm-' + m[0]] ? '<div class="fila"><input class="ctl w" id="gm-' + m[0] + '" data-d="gm-' + m[0] + '" placeholder="Nombre, por ejemplo: Mi desayuno de siempre" aria-label="Nombre de la comida" value="' + esc(dv('gm-' + m[0])) + '"><button class="btn" data-act="com-guardar" data-id="' + m[0] + '">Guardar</button></div>' : '<button class="btn-txt" data-act="abre" data-id="gm-' + m[0] + '" style="align-self:flex-start;min-height:0">Guardar como mi comida</button>') : '') + '</div>';
-  });
-  if (+d.prot) h += '<p class="chico" style="color:var(--tinta-2)">Proteína rápida: ' + (+d.prot) + ' × 25 g <button class="btn-txt" data-act="prot" data-v="-1" style="min-height:0">Quitar una</button></p>';
+  var mk = metaKcal(), mp = +planC().proteina || 0, t = totDia(d), cs = d.comidas || [], det = S.abre.comDet;
+  var h = '<section class="prot" id="comida"><div class="sec-h"><h2 style="font-size:16px">Comida</h2>' + (S.abre.comAdd ? '' : '<button class="btn btn-sol" data-act="abre" data-id="comAdd"' + bq + '>+ Agregar</button>') + '</div>';
+  h += '<div class="barras">' + barra('kcal', t.kcal, mk, 'Calorías') + barra('g proteína', t.p, mp, 'Proteína') + '</div>';
+  if (!mk) h += '<div class="aviso"><span><b>Falta tu meta de calorías.</b> Se calcula con tu estatura y edad.</span><button class="btn" data-act="ir-plan">Definir</button></div>';
   if (S.abre.comAdd) h += vAgregarComida();
-  else h += '<div class="fila"><button class="btn btn-sol" data-act="abre" data-id="comAdd"' + bq + '>Agregar comida</button><button class="btn-txt" data-act="prot" data-v="1"' + bq + '>+ 25 g proteína</button>' + (mk && !S.abre.metaK ? '<button class="btn-txt" data-act="abre" data-id="metaK">Meta</button>' : '') + '</div>';
+  if (cs.length || +d.prot) h += '<button class="btn-txt" data-act="abre" data-id="comDet" aria-expanded="' + !!det + '" style="align-self:flex-start;min-height:0">' + (det ? 'Ocultar lo que comí' : 'Ver lo que comí (' + (cs.length + (+d.prot ? 1 : 0)) + ')') + '</button>';
+  if (det){
+    COMIDAS.forEach(function(m){
+      var its = cs.filter(function(x){ return (x.m || 'col') === m[0]; }); if (!its.length) return;
+      var sk = 0; its.forEach(function(x){ sk += +x.kcal || 0; });
+      h += '<div class="campo" style="gap:4px"><div class="sec-h"><span class="grupo-t">' + m[1] + '</span><span class="chico mono dim">' + n0(sk) + ' kcal</span></div><ul class="reg">' + its.map(function(x){
+        return '<li><span>' + esc(x.n) + ' <span class="dim">' + esc(x.q || '') + '</span></span><span class="mono" style="white-space:nowrap">' + n0(x.kcal) + ' · ' + n0(x.p) + ' g <button class="btn-txt" data-act="com-del" data-id="' + esc(x.id) + '" aria-label="Quitar ' + esc(x.n) + '" style="min-height:0;padding:0 0 0 6px">×</button></span></li>'; }).join('') + '</ul>' +
+        (its.length > 1 ? (S.abre['gm-' + m[0]] ? '<div class="fila"><input class="ctl w" id="gm-' + m[0] + '" data-d="gm-' + m[0] + '" placeholder="Nombre, por ejemplo: Mi desayuno de siempre" aria-label="Nombre de la comida" value="' + esc(dv('gm-' + m[0])) + '"><button class="btn" data-act="com-guardar" data-id="' + m[0] + '">Guardar</button></div>' : '<button class="btn-txt" data-act="abre" data-id="gm-' + m[0] + '" style="align-self:flex-start;min-height:0">Guardar como mi comida</button>') : '') + '</div>';
+    });
+    h += '<div class="fila"><span class="chico" style="color:var(--tinta-2)">Proteína sin detalle' + (+d.prot ? ': ' + (+d.prot) + ' × 25 g' : '') + '</span>' + (+d.prot ? '<button class="btn-txt" data-act="prot" data-v="-1" style="min-height:0">−</button>' : '') + '<button class="btn-txt" data-act="prot" data-v="1"' + bq + ' style="min-height:0">+ 25 g</button></div>';
+  }
   return h + '</section>';
 }
-
 /* ---------- Actividad del día ---------- */
 var ACT = { cam:'Caminata', kb:'Kettlebell y cuerda', otra:'Otra actividad' };
 function tieneMomentoEntreno(f){ var t = tipoDe(f); return !!(t && t.bloques.some(function(b){ return b.tipo === 'entreno'; })); }
 function vActividad(f, d, bq){
-  var as = d.act || [], w = String(parse(f).getDay()), extra = !tieneMomentoEntreno(f), fz = extra && (S.abre['fz-' + f] || hayEntreno(f) || !!(planE().dias || {})[w]);
+  var as = d.act || [], w = String(parse(f).getDay()), ab = !!S.abre['fz-' + f], fz = tieneMomentoEntreno(f) || hayEntreno(f) || !!(planE().dias || {})[w] || ab;
   var km = 0, mi = 0; as.forEach(function(a){ km += numf(a.km); mi += ent(a.min); });
-  var h = '<section class="sec"><div class="sec-h"><h2>Actividad</h2><span class="conteo mono">' + [km ? kgT(km) + ' km' : '', mi ? mi + ' min' : ''].filter(Boolean).join(' · ') + '</span></div><div class="tarjeta">';
-  if (fz) h += '<div class="det" style="border-top:0;padding-bottom:0"><span class="grupo-t">Fuerza</span></div>' + vEntreno(f, bq);
-  as.forEach(function(a, i){
+  var h = '<section class="prot" id="actividad"><div class="sec-h"><h2 style="font-size:16px">Actividad</h2><span class="conteo mono">' + [km ? kgT(km) + ' km' : '', mi ? mi + ' min' : ''].filter(Boolean).join(' · ') + '</span></div>';
+  if (fz){
+    var foco = focoDe(f), ejs = ejerciciosDe(foco), hechos = ejs.filter(function(e){ return conDatos(serHoy(f, e.id)).length; }).length, vol = 0, ej = (d.entreno && d.entreno.ej) || {};
+    Object.keys(ej).forEach(function(k){ vol += volumen(ej[k] && ej[k].series); });
+    h += '<div class="act-f"><button class="act-t" data-act="abre" data-id="fz-' + f + '" aria-expanded="' + ab + '"><span class="item-t"><b>Fuerza' + (focoNombre(foco) ? ': ' + esc(focoNombre(foco)) : '') + '</b><small>' + (ejs.length ? hechos + ' de ' + ejs.length + ' ejercicios' : (foco ? 'sin ejercicios todavía' : 'elige el foco')) + (vol ? ' · ' + n0(vol) + ' kg' : '') + '</small></span>' + CHEV + '</button>' + (ab ? vEntreno(f, bq) : '') + '</div>';
+  }
+  as.forEach(function(a){
     var id = esc(a.id);
-    h += '<div class="det"' + (!fz && i === 0 ? ' style="border-top:0"' : '') + '><div class="sec-h"><b>' + esc(a.t === 'otra' ? (a.n || 'Otra actividad') : ACT[a.t] || 'Actividad') + '</b><button class="btn-txt" data-act="act-del" data-id="' + id + '" style="min-height:0">Quitar</button></div><div class="fila">' +
+    h += '<div class="act-r"><b>' + esc(a.t === 'otra' ? 'Otra' : ACT[a.t] || 'Actividad') + '</b>' +
       (a.t === 'otra' ? '<input class="ctl" id="ac-n-' + id + '" data-ac="' + id + '" data-k="n" placeholder="Qué hiciste" aria-label="Actividad" value="' + esc(a.n || '') + '"' + bq + '>' : '') +
       (a.t === 'cam' ? '<input class="ctl n" id="ac-km-' + id + '" data-ac="' + id + '" data-k="km" inputmode="decimal" placeholder="km" aria-label="Kilómetros" value="' + esc(coma(a.km)) + '"' + bq + '><span class="chico">km</span>' : '') +
-      '<input class="ctl n" id="ac-min-' + id + '" data-ac="' + id + '" data-k="min" inputmode="numeric" placeholder="min" aria-label="Minutos" value="' + esc(a.min || '') + '"' + bq + '><span class="chico">min</span></div></div>';
+      '<input class="ctl n" id="ac-min-' + id + '" data-ac="' + id + '" data-k="min" inputmode="numeric" placeholder="min" aria-label="Minutos" value="' + esc(a.min || '') + '"' + bq + '><span class="chico">min</span>' +
+      '<button class="btn-txt" data-act="act-del" data-id="' + id + '" aria-label="Quitar" style="min-height:0;padding:0 4px">×</button></div>';
   });
-  if (!as.length && !fz) h += '<div class="det" style="border-top:0"><p class="chico dim">Anota aquí la caminata, la sesión de la tarde o un entreno de fuerza en un día que no lo tenía.</p></div>';
-  h += '<div class="det"><div class="fila"><button class="btn" data-act="act-add" data-id="cam"' + bq + '>+ Caminata</button><button class="btn" data-act="act-add" data-id="kb"' + bq + '>+ Kettlebell y cuerda</button>' +
-    (extra && !fz ? '<button class="btn" data-act="abre" data-id="fz-' + f + '"' + bq + '>+ Fuerza</button>' : '') + '<button class="btn-txt" data-act="act-add" data-id="otra"' + bq + '>Otra</button></div></div>';
-  return h + '</div></section>';
+  h += '<div class="fila"><button class="btn" data-act="act-add" data-id="cam"' + bq + '>+ Caminata</button><button class="btn" data-act="act-add" data-id="kb"' + bq + '>+ Kettlebell y cuerda</button>' +
+    (fz ? '' : '<button class="btn" data-act="abre" data-id="fz-' + f + '"' + bq + '>+ Fuerza</button>') + '<button class="btn-txt" data-act="act-add" data-id="otra"' + bq + '>Otra</button></div>';
+  return h + '</section>';
 }
 function vProt(f, d, bq){
   var pc = planC(), meta = +pc.proteina || 0; if (!meta) return '';
@@ -1312,7 +1333,7 @@ function vMomento(m, f, d, bq){
     h += '<ul class="its">' + itemsDe(b).map(function(x){ return vItem(x, d, bq, b.items ? '' : b.hora, !!b.rec); }).join('') + '</ul>';
     if (b.nota) h += '<p class="mb-n">' + esc(b.nota) + '</p>';
     if (b.accion === 'respirar' && esHoy) h += '<div class="mb-a"><button class="btn" data-act="respirar">Respiración box guiada</button></div>';
-    if (b.tipo === 'entreno') h += vEntreno(f, bq);
+    if (b.tipo === 'entreno') h += '<div class="mb-a"><button class="btn" data-act="ir-fuerza">Anotar series</button></div>';
     h += '</div>';
   });
   return h + '</div>';
@@ -1397,7 +1418,7 @@ function vHoy(){
   h += avisos();
   if (!S.cfg) return h + sinRutina();
   var pzH = pausaDe(f); if (pzH) h += '<p class="chico dim" style="text-align:center">Vacaciones hasta el ' + fechaLarga(pzH.hasta) + ': la rutina de trabajo no cuenta.</p>';
-  h += vArco(f) + vVentana(f, d, bq) + vComida(f, d, bq);
+  h += vArco(f) + vVentana(f, d, bq) + vComida(f, d, bq) + vActividad(f, d, bq);
   var pcH = planC(), pesoHoy = ((docGet('plan/pesos') || {}).m || {})[f];
   if (esHoy && pesoPlan(pcH, f) != null && fd.getDay() === (pcH.diaPeso == null ? 6 : +pcH.diaPeso) && !(pesoHoy > 0))
     h += '<div class="aviso"><span><b>Hoy toca pesarte.</b> En ayunas y después del baño, siempre igual.</span><span class="fila"><input class="ctl n" id="peso-h" data-d="peso-h" inputmode="decimal" placeholder="kg" aria-label="Peso de hoy en kilos" value="' + esc(dv('peso-h')) + '"><button class="btn btn-sol" data-act="peso-reg" data-id="h">Guardar</button></span></div>';
@@ -1423,7 +1444,7 @@ function vHoy(){
   noche('formacion', 'Formación', d.estudioMin ? d.estudioMin + ' min' : (plF && plF.dias && !franjaDe('formacion', f) ? 'hoy libre' : tocaF), function(){
     var hh = '<div class="det">' + ((d.estudios||[]).length ? '<ul class="reg">' + d.estudios.map(function(x){ return '<li><span>' + esc(x.curso || 'Estudio') + '</span><span class="mono">' + x.min + ' min</span></li>'; }).join('') + '</ul>' : '');
     [cP, cS].forEach(function(c){ if (c) hh += '<div class="campo"><span class="grupo-t">' + esc(c.nombre) + ' <span class="etq neutra">' + (c.rol === 'principal' ? 'Principal' : 'Secundario') + '</span></span>' + vModulo(c) + '<div class="fila">' + botonesMin('estudiar', c.nombre, [30,60]) + '</div></div>'; });
-    if (!cP && !cS) hh += '<p class="chico dim">Elige un curso principal en Estudio para ver aquí qué módulo toca.</p>';
+    if (!cP && !cS) hh += '<p class="chico dim">Elige un curso principal en Mente, Cursos, para ver aquí qué módulo toca.</p>';
     return hh + '<div class="fila"><button class="btn-txt" data-act="ir-estudio" data-id="cursos">Ver todos los cursos</button></div></div>'; });
   noche('lectura', 'Lectura', d.lecturaMin ? d.lecturaMin + ' min' : ls.map(function(l){ return l.nombre; }).join(' y '), function(){
     if (ls.length) return '<div style="border-top:1px solid var(--linea)">' + ls.map(function(l){ return vLibroSeg(l, f, bq, false); }).join('<div style="border-top:1px solid var(--linea)"></div>') + '</div>';
@@ -1436,9 +1457,7 @@ function vHoy(){
   filas.forEach(function(x){ x.sig = x.id === sig; });
   h += '<section class="sec"><div class="sec-h"><h2>Tu día</h2><span class="conteo mono">' + hechas + ' de ' + filas.length + '</span></div>' + (bq ? '<p class="dim chico">Cargando tu registro…</p>' : '') +
     '<ol class="lista dia">' + filas.map(filaDia).join('') + '</ol><p class="chico dim">El sol marca el bloque completo. El nombre abre el detalle.</p></section>';
-  h += vActividad(f, d, bq);
   h += vCierre(f, d, ms, bq);
-  h += vRecup(f, bq);
   return h;
 }
 function celda(f, h, fut){
@@ -1511,11 +1530,6 @@ function vSemana(){
   });
   h += '</div><div class="graf-x mono">' + ws.map(function(x){ return '<span>' + corta(x.lun).replace(' ', '<br>') + '</span>'; }).join('') + '</div></div>' +
     '<p class="chico" style="color:var(--tinta-2)">Semana del ' + corta(sw.lun) + ': ' + (sw.pct == null ? 'sin registro.' : '<b>' + sw.pct + '%</b> de cumplimiento, ' + sw.reg + (sw.reg === 1 ? ' día' : ' días') + ' con registro.') + '</p></section>';
-  var pz = docGet('plan/pausa') || {};
-  h += '<section class="sec"><div class="sec-h"><h2>Vacaciones</h2>' + (pz.desde && pz.hasta && pz.hasta >= t ? '<span class="conteo">' + corta(pz.desde) + ' – ' + corta(pz.hasta) + '</span>' : '') + '</div>' +
-    '<p class="chico dim">Entre estas fechas la rutina de trabajo no se cuenta en el cumplimiento.</p>' +
-    '<div class="fila"><label for="vac-d">Desde</label><input class="ctl" type="date" id="vac-d" data-d="vac-d" value="' + esc(dv('vac-d', pz.desde || '')) + '"><label for="vac-h">Hasta</label><input class="ctl" type="date" id="vac-h" data-d="vac-h" value="' + esc(dv('vac-h', pz.hasta || '')) + '"></div>' +
-    '<div class="fila"><button class="btn btn-sol" data-act="vac">Guardar</button>' + (pz.desde ? '<button class="btn-txt" data-act="vac-quitar">Quitar vacaciones</button>' : '') + '</div></section>';
   return h;
 }
 
@@ -1639,10 +1653,21 @@ function vCursosSeg(){
   }
   return h;
 }
+function vMeditacionSeg(){
+  var t = hoy(), d = dia(t), meds = [], hb = ((S.cfg && S.cfg.habitos) || []).filter(function(x){ return x.id === 'meditacion'; })[0];
+  fechasDesc().forEach(function(f){ (dia(f).meds || []).forEach(function(x){ meds.push({ f:f, x:x }); }); });
+  var h = '<div class="pares"><div class="par"><b>' + (d.medMin || 0) + ' min</b><span>Hoy</span></div><div class="par"><b>' + sumaSemana(lunesDe(t), 'medMin') + ' min</b><span>Esta semana</span></div>' +
+    (hb && hb.frec ? '<div class="par"><b>' + vecesSem(lunesDe(t), 'meditacion') + ' de ' + hb.frec + '</b><span>Días esta semana</span></div>' : '') + '</div>';
+  h += '<section class="sec"><div class="sec-h"><h2>Hoy</h2></div><div class="tarjeta">' + vMeditacion(t, bloqueado() ? ' disabled' : '') + '</div></section>';
+  h += '<section class="sec"><div class="sec-h"><h2>Últimas sesiones</h2><span class="conteo mono">' + meds.length + '</span></div>';
+  if (meds.length) h += '<ul class="lista diario">' + meds.slice(0, 10).map(function(o){ return '<li><span class="mono dim">' + corta(o.f) + '</span><span>' + esc(o.x.tipo) + ' · <span class="mono">' + o.x.min + ' min</span></span></li>'; }).join('') + '</ul>';
+  else h += '<div class="vacio"><b>Aún no hay sesiones</b><p class="dim chico">Registra la primera aquí arriba o con la respiración box guiada.</p></div>';
+  return h + '</section>';
+}
 function vEstudio(){
-  var s = S.estudio, h = marca() + '<header class="cab1"><p class="eyebrow">Seguimiento</p><h1>Estudio</h1></header>' + avisos() +
-    '<div class="seg" role="group" aria-label="Sección">' + [['lectura','Lectura'],['biblia','Biblia'],['cursos','Cursos']].map(function(x){ return '<button data-act="seg-est" data-id="' + x[0] + '" aria-pressed="' + (x[0] === s) + '">' + x[1] + '</button>'; }).join('') + '</div>';
-  return h + (s === 'biblia' ? vBibliaSeg() : s === 'cursos' ? vCursosSeg() : vLecturaSeg());
+  var s = S.estudio, h = marca() + '<header class="cab1"><p class="eyebrow">Lectura, estudio y meditación</p><h1>Mente</h1></header>' + avisos() +
+    '<div class="seg" role="group" aria-label="Sección">' + [['lectura','Lectura'],['biblia','Biblia'],['cursos','Cursos'],['meditacion','Meditación']].map(function(x){ return '<button data-act="seg-est" data-id="' + x[0] + '" aria-pressed="' + (x[0] === s) + '">' + x[1] + '</button>'; }).join('') + '</div>';
+  return h + (s === 'biblia' ? vBibliaSeg() : s === 'cursos' ? vCursosSeg() : s === 'meditacion' ? vMeditacionSeg() : vLecturaSeg());
 }
 
 function supsDe(k){
@@ -1865,11 +1890,21 @@ function vAlarmas(){
     '<p class="chico dim">' + 'Son ' + r.n + ' eventos que se repiten. Si cambias tu rutina, descarga de nuevo. Conviene agregarlos a un calendario aparte llamado Sunshine, para poder borrarlo y reemplazarlo completo.</p></section>';
   return h;
 }
+function vPlanAj(){
+  var pc = planC(), t = hoy(), h = '<section class="sec"><div class="sec-h"><h2>Peso y proteína</h2>' + (pesoPlan(pc, t) != null ? '<span class="conteo">' + kgT(pc.pesoInicio) + ' → ' + kgT(pc.pesoMeta) + ' kg</span>' : '') + '</div>' + vPlanPeso(pc) + '</section>' +
+    '<section class="sec"><div class="sec-h"><h2>Calorías</h2>' + (metaKcal() ? '<span class="conteo">meta ' + n0(metaKcal()) + ' kcal</span>' : '') + '</div>' + vMetaKcal(pc, true) + '</section>';
+  var pz = docGet('plan/pausa') || {};
+  h += '<section class="sec"><div class="sec-h"><h2>Vacaciones</h2>' + (pz.desde && pz.hasta && pz.hasta >= t ? '<span class="conteo">' + corta(pz.desde) + ' – ' + corta(pz.hasta) + '</span>' : '') + '</div>' +
+    '<p class="chico dim">Entre estas fechas la rutina de trabajo no se cuenta en el cumplimiento.</p>' +
+    '<div class="fila"><label for="vac-d">Desde</label><input class="ctl" type="date" id="vac-d" data-d="vac-d" value="' + esc(dv('vac-d', pz.desde || '')) + '"><label for="vac-h">Hasta</label><input class="ctl" type="date" id="vac-h" data-d="vac-h" value="' + esc(dv('vac-h', pz.hasta || '')) + '"></div>' +
+    '<div class="fila"><button class="btn btn-sol" data-act="vac">Guardar</button>' + (pz.desde ? '<button class="btn-txt" data-act="vac-quitar">Quitar vacaciones</button>' : '') + '</div></section>';
+  return h;
+}
 function vAjustes(){
   var h = marca() + '<header class="cab1"><p class="eyebrow">Configuración</p><h1>Ajustes</h1></header>' + avisos();
   if (!S.cfg) return h + sinRutina() + pie();
-  h += '<div class="seg" role="group" aria-label="Sección">' + [['suplementos','Suplementos'],['alarmas','Alarmas'],['respaldo','Respaldo']].map(function(x){ return '<button data-act="seg-aj" data-id="' + x[0] + '" aria-pressed="' + (x[0] === S.ajuste) + '">' + x[1] + '</button>'; }).join('') + '</div>';
-  return h + (S.ajuste === 'alarmas' ? vAlarmas() : S.ajuste === 'respaldo' ? vRespaldo() : vSuplementos());
+  h += '<div class="seg" role="group" aria-label="Sección">' + [['plan','Plan'],['suplementos','Suplementos'],['alarmas','Alarmas'],['respaldo','Respaldo']].map(function(x){ return '<button data-act="seg-aj" data-id="' + x[0] + '" aria-pressed="' + (x[0] === S.ajuste) + '">' + x[1] + '</button>'; }).join('') + '</div>';
+  return h + (S.ajuste === 'alarmas' ? vAlarmas() : S.ajuste === 'respaldo' ? vRespaldo() : S.ajuste === 'suplementos' ? vSuplementos() : vPlanAj());
 }
 
 function pesosL(){ var m = (docGet('plan/pesos') || {}).m || {}; return Object.keys(m).filter(function(k){ return +m[k] > 0; }).sort().map(function(k){ return { f:k, kg:+m[k] }; }); }
@@ -1909,7 +1944,7 @@ function vPeso(){
   var pc = planC(), ps = pesosL(), t = hoy(), ok = pesoPlan(pc, t) != null;
   var h = '<section class="sec"><div class="sec-h"><h2>Peso</h2>' + (ok ? '<span class="conteo">meta ' + kgT(pc.pesoMeta) + ' kg · ' + fechaLarga(pc.hasta) + '</span>' : '') + '</div>';
   if (docCargando('plan/cuerpo')) return h + '<p class="dim chico">Cargando tu plan…</p></section>';
-  if (!ok) return h + '<div class="vacio"><b>Tu plan de peso no está definido</b><p class="dim chico">Anota de dónde partes, a dónde quieres llegar y para cuándo.</p></div>' + vPlanPeso(pc) + '</section>';
+  if (!ok) return h + '<div class="vacio"><b>Tu plan de peso no está definido</b><p class="dim chico">Anota de dónde partes, a dónde quieres llegar y para cuándo.</p><button class="btn" data-act="ir-plan">Definir el plan</button></div></section>';
   var ult = ps[ps.length - 1], act = ult ? ult.kg : pc.pesoInicio, sem = Math.max(0.5, (+parse(pc.hasta) - +parse(t)) / 604800000), falta = act - pc.pesoMeta;
   var dif = ult ? ult.kg - pesoPlan(pc, ult.f) : 0, sel = S.pesoSel && ps.some(function(p){ return p.f === S.pesoSel; }) ? S.pesoSel : (ult ? ult.f : null), ps1 = ps.filter(function(p){ return p.f === sel; })[0];
   h += '<div class="tiles"><div class="tile"><span class="tile-l">Actual</span><span class="tile-v">' + kgT(act) + '</span><span class="tile-s">' + (ult ? 'kg · ' + corta(ult.f) : 'kg al partir') + '</span></div>' +
@@ -1918,15 +1953,45 @@ function vPeso(){
   h += vGrafPeso(pc, ps, sel);
   if (ps1) h += '<p class="chico" style="color:var(--tinta-2)">' + diaCorto(ps1.f) + ': <b>' + kgT(ps1.kg) + ' kg</b>, ' + vsPlan(pc, ps1) + '.</p>';
   h += '<p class="chico dim">' + (falta > 0 ? 'Faltan ' + kgT(falta) + ' kg: ' + kgT(falta / sem) + ' kg por semana desde hoy.' : 'Llegaste a la meta.') + ' Pésate una vez a la semana, el mismo día y a la misma hora.</p>';
-  h += '<div class="fila"><label for="peso-c">Peso de hoy</label><input class="ctl n" id="peso-c" data-d="peso-c" inputmode="decimal" placeholder="kg" value="' + esc(dv('peso-c')) + '"><button class="btn btn-sol" data-act="peso-reg" data-id="c">Registrar</button><button class="btn-txt" data-act="abre" data-id="pesoPlan">' + (S.abre.pesoPlan ? 'Cerrar' : 'Cambiar plan') + '</button></div>';
-  if (S.abre.pesoPlan) h += vPlanPeso(pc);
+  h += '<div class="fila"><label for="peso-c">Peso de hoy</label><input class="ctl n" id="peso-c" data-d="peso-c" inputmode="decimal" placeholder="kg" value="' + esc(dv('peso-c')) + '"><button class="btn btn-sol" data-act="peso-reg" data-id="c">Registrar</button><button class="btn-txt" data-act="ir-plan">Cambiar plan</button></div>';
   if (ps.length) h += '<ul class="lista diario">' + ps.slice(-8).reverse().map(function(p, i){ return '<li><span class="mono dim">' + corta(p.f) + '</span><span><b>' + kgT(p.kg) + ' kg</b> · ' + vsPlan(pc, p) + (i === 0 ? ' <button class="btn-txt" data-act="peso-del" data-id="' + p.f + '" style="min-height:0;padding:0 0 0 8px">Quitar</button>' : '') + '</span></li>'; }).join('') + '</ul>';
   return h + '</section>';
 }
 function vCuerpo(){
-  var cfg = S.cfg, p = planE(), t = hoy(), h = marca() + '<header class="cab1"><p class="eyebrow">Entrenamiento y recuperación</p><h1>Cuerpo</h1></header>' + avisos();
-  if (!cfg) return h + sinRutina();
-  h += vPeso();
+  var h = marca() + '<header class="cab1"><p class="eyebrow">Peso, comida y entrenamiento</p><h1>Cuerpo</h1></header>' + avisos();
+  if (!S.cfg) return h + sinRutina();
+  h += '<div class="seg" role="group" aria-label="Sección">' + [['peso','Peso'],['comida','Comida'],['entreno','Entreno']].map(function(x){ return '<button data-act="seg-cu" data-id="' + x[0] + '" aria-pressed="' + (x[0] === S.cuerpo) + '">' + x[1] + '</button>'; }).join('') + '</div>';
+  return h + (S.cuerpo === 'peso' ? vPeso() : S.cuerpo === 'comida' ? vComidaSeg() : vEntrenoSeg());
+}
+function vActSemana(){
+  var t = hoy(), lun = lunesDe(t), km = 0, mi = 0, fz = 0, filas = [];
+  for (var i = 0; i < 7; i++){
+    var f = addDays(lun, i); if (f > t) break;
+    var d = dia(f), x = [];
+    if (hayEntreno(f)){ fz++; x.push('Fuerza' + (focoNombre(focoDe(f)) ? ' (' + focoNombre(focoDe(f)) + ')' : '')); }
+    (d.act || []).forEach(function(a){ km += numf(a.km); mi += ent(a.min); x.push((a.t === 'otra' ? (a.n || 'Actividad') : ACT[a.t]) + (a.km ? ' ' + kgT(numf(a.km)) + ' km' : '') + (a.min ? ' ' + ent(a.min) + ' min' : '')); });
+    if (x.length) filas.push('<li><span class="mono dim">' + DIA3[parse(f).getDay()] + ' ' + parse(f).getDate() + '</span><span>' + esc(x.join(' · ')) + '</span></li>');
+  }
+  var h = '<section class="sec"><div class="sec-h"><h2>Esta semana</h2></div><div class="pares"><div class="par"><b>' + fz + '</b><span>Sesiones de fuerza</span></div><div class="par"><b>' + kgT(km) + ' km</b><span>Caminata</span></div><div class="par"><b>' + mi + ' min</b><span>Otra actividad</span></div></div>';
+  return h + (filas.length ? '<ul class="lista diario">' + filas.join('') + '</ul>' : '') + '</section>';
+}
+function vComidaSeg(){
+  var t = hoy(), mk = metaKcal(), mp = +planC().proteina || 0, h = '', sk = 0, sp = 0, n = 0, filas = '';
+  for (var i = 0; i < 7; i++){
+    var f = addDays(t, -i), td = totDia(dia(f));
+    if (td.kcal || td.p){ sk += td.kcal; sp += td.p; n++; }
+    filas += '<li><span class="mono dim">' + DIA3[parse(f).getDay()] + ' ' + parse(f).getDate() + '</span><span>' + (td.kcal || td.p ? '<b>' + n0(td.kcal) + ' kcal</b> · ' + n0(td.p) + ' g proteína' + (mk && td.kcal > mk * 1.05 ? ' · <span style="color:var(--brasa)">sobre la meta</span>' : '') : '<span class="dim">sin registro</span>') + '</span></li>';
+  }
+  h += '<div class="pares"><div class="par"><b>' + (n ? n0(sk / n) : '—') + '</b><span>kcal por día' + (mk ? ' (meta ' + n0(mk) + ')' : '') + '</span></div><div class="par"><b>' + (n ? n0(sp / n) + ' g' : '—') + '</b><span>Proteína por día' + (mp ? ' (meta ' + mp + ')' : '') + '</span></div></div>';
+  h += '<section class="sec"><div class="sec-h"><h2>Últimos 7 días</h2></div><ul class="lista diario">' + filas + '</ul><div class="fila"><button class="btn-txt" data-act="ir-plan">' + (mk ? 'Cambiar la meta' : 'Definir la meta de calorías') + '</button></div></section>';
+  var mc = misComidas();
+  h += '<section class="sec"><div class="sec-h"><h2>Mis comidas</h2><span class="conteo mono">' + mc.length + '</span></div>';
+  if (mc.length) h += '<ul class="lista">' + mc.map(function(x){ return '<li class="libro"><span class="item-t"><b>' + esc(x.n) + '</b><small>' + n0(x.kcal) + ' kcal · ' + n0(x.p) + ' g proteína por ' + esc(x.med || 'porción') + (x.det ? ' · ' + esc(x.det) : '') + '</small></span><button class="btn-txt" data-act="com-mdel" data-id="' + esc(x.id) + '">Quitar</button></li>'; }).join('') + '</ul>';
+  else h += '<div class="vacio"><b>Todavía no guardas comidas</b><p class="dim chico">En Hoy, al registrar, usa «Guardar como mi comida» o «Crear un alimento». Quedan aquí para usarlas con un toque.</p></div>';
+  return h + '</section>';
+}
+function vEntrenoSeg(){
+  var cfg = S.cfg, p = planE(), t = hoy(), h = '';
   var diasE = [1,2,3,4,5,6,0].filter(function(w){ for (var k in cfg.tipos){ var tp = cfg.tipos[k]; if ((tp.dias||[]).indexOf(w) >= 0) return tp.bloques.some(function(b){ return b.tipo === 'entreno'; }); } return false; });
   if (!(p.focos||[]).length) return h + '<div class="vacio"><b>Tu plan de entrenamiento todavía no está cargado</b><p class="dim chico">Viene dentro de tu respaldo. Cárgalo en Ajustes, Respaldo.</p></div>';
   diasE = [1,2,3,4,5,6,0];
@@ -1955,16 +2020,7 @@ function vCuerpo(){
   else h += '<div class="vacio"><b>Aún no hay sesiones</b><p class="dim chico">Marca el entrenamiento en Hoy y anota tus series. Aquí verás las últimas seis sesiones, con cada serie y el volumen total.</p></div>';
   h += '</section>';
 
-  var meds = [];
-  fechasDesc().forEach(function(f){ (dia(f).meds||[]).forEach(function(x){ meds.push({ f:f, x:x }); }); });
-  h += '<section class="sec"><div class="sec-h"><h2>Meditación</h2><span class="conteo mono">' + sumaSemana(lunesDe(t), 'medMin') + ' min esta semana</span></div>';
-  if (meds.length) h += '<ul class="lista diario">' + meds.slice(0, 8).map(function(o){ return '<li><span class="mono dim">' + corta(o.f) + '</span><span>' + esc(o.x.tipo) + ' · <span class="mono">' + o.x.min + ' min</span></span></li>'; }).join('') + '</ul>';
-  else h += '<div class="vacio"><b>Aún no hay sesiones de meditación</b><p class="dim chico">Regístralas en Hoy, o usa la respiración box guiada.</p><button class="btn" data-act="respirar">Respiración box guiada</button></div>';
-  h += '</section>';
-  if (cfg.recuperacion && cfg.recuperacion.length){
-    var nsem = Math.min(cfg.recuperacion.length, Math.ceil(parse(t).getDate()/7)), rc = cfg.recuperacion[nsem-1];
-    h += '<section class="nota"><p class="eyebrow">Recuperación · semana ' + nsem + ' del mes</p><p><b>' + esc(rc.titulo) + '</b></p><p class="chico dim">' + esc(rc.frecuencia) + '</p></section>';
-  }
+  h += vActSemana() + vRecup(S.date, '');
   return h;
 }
 function vMetas(){
@@ -2033,7 +2089,12 @@ function alternarPaso(f, ids, valor){
   if (toc.entreno && 'entreno' in auto) hab.entreno = auto.entreno;
   if (toc.med){ var pmed = pasosMed(f), alguno = false, km; for (km in pmed) if (pasos[km]) alguno = true; hab.meditacion = alguno || (d.meds || []).length > 0; }
   if (!vacio(hab)) p.habitos = hab;
+  /* Marcar «Rompe el ayuno» o «Cierre de ventana» anota la ventana real, si aún no estaba */
+  var abreV = false, cierraV = false, vt = d.ventana || {};
+  if (f === hoy() && tp) tp.bloques.forEach(function(b2){ var tt = llano(b2.titulo || ''); if (itemsDe(b2).some(function(x){ return ids.indexOf(x.id) >= 0 && pasos[x.id]; })){ if (/rompe el ayuno/.test(tt)) abreV = true; if (/cierre de ventana/.test(tt)) cierraV = true; } });
   mutate(f, p);
+  if (abreV && !OKH.test(vt.abre || '')) ponerVentana(f, { abre:ahoraHM() });
+  if (cierraV && !OKH.test(vt.cierra || '')) ponerVentana(f, { cierra:ahoraHM() });
 }
 function estudiar(curso, min){
   var t = hoy(), d = dia(t), antes = { estudios:d.estudios || [], estudioMin:d.estudioMin || 0, curso:d.curso || '', habitos:{ formacion:!!(d.habitos && d.habitos.formacion) } };
@@ -2083,10 +2144,10 @@ document.addEventListener('click', function(ev){
     var itA = itemDe(S.comSel); if (!itA) return;
     var uA = dv('com-u', itA.por ? 'p' : 'm'), vA = calcItem(itA, dv('com-c', '1'), uA); if (!(numf(dv('com-c', '1')) > 0)){ toast('Escribe la cantidad.'); return; }
     var eA = { id:'c' + Date.now().toString(36), n:itA.n, q:vA.q, kcal:Math.round(vA.kcal), p:Math.round(vA.p * 10) / 10, c:Math.round(vA.c * 10) / 10, g:Math.round(vA.g * 10) / 10, m:dv('com-m', comidaPorHora()), src:itA.k };
-    d = dia(S.date); S.comSel = null; S.qc = ''; limpiar('com-'); mutate(S.date, { comidas:(d.comidas || []).concat([eA]) }); render(true);
+    d = dia(S.date); S.comSel = null; S.qc = ''; limpiar('com-'); var nA = (d.comidas || []).concat([eA]); mutate(S.date, { comidas:nA, habitos:{ dieta:dietaComida(nA) } }); render(true);
     return toast('Agregado: ' + itA.n + ', ' + n0(eA.kcal) + ' kcal.', function(){ var d2 = dia(S.date); mutate(S.date, { comidas:(d2.comidas || []).filter(function(x){ return x.id !== eA.id; }) }); });
   }
-  if (act === 'com-del'){ d = dia(S.date); var antesC = d.comidas || []; mutate(S.date, { comidas:antesC.filter(function(x){ return x.id !== id; }) }); return toast('Quitado.', function(){ mutate(S.date, { comidas:antesC }); }); }
+  if (act === 'com-del'){ d = dia(S.date); var antesC = d.comidas || [], nD = antesC.filter(function(x){ return x.id !== id; }); mutate(S.date, nD.length ? { comidas:nD, habitos:{ dieta:dietaComida(nD) } } : { comidas:nD }); return toast('Quitado.', function(){ mutate(S.date, { comidas:antesC }); }); }
   if (act === 'com-guardar'){
     d = dia(S.date); var itsG = (d.comidas || []).filter(function(x){ return (x.m || 'col') === id; }), nG = String(dv('gm-' + id)).trim();
     if (!nG){ toast('Ponle un nombre a esta comida.'); return; }
@@ -2208,6 +2269,9 @@ document.addEventListener('click', function(ev){
     docSet('cursos/c' + Date.now().toString(36), { nombre:cn, plataforma:String(dv('c-p')).trim(), enlace:String(dv('c-e')).trim(), avance:0, mods:mds, rol:'', pausa:false, oculto:false }, true);
     limpiar('c-'); render(true); return toast('Curso agregado: ' + cn + '.');
   }
+  if (act === 'seg-cu'){ S.cuerpo = id; try { localStorage.setItem('sunshine.cuerpo', id); } catch(e){} return render(true); }
+  if (act === 'ir-plan'){ S.ajuste = 'plan'; return irA('ajustes'); }
+  if (act === 'ir-fuerza'){ S.abre['fz-' + S.date] = true; render(true); var elA = $('#actividad'); if (elA) elA.scrollIntoView({ block:'start' }); return; }
   if (act === 'seg-aj'){ S.ajuste = id; return render(true); }
   if (act === 'sup-tipo'){ S.supTipo = id; return render(true); }
   if (act === 'sup-del'){ var antesB = clone(S.cfg.tipos[v].bloques); supQuitar(v, id); render(true); return toast('Suplemento quitado.', function(){ guardarBloques(v, antesB); render(true); }); }
